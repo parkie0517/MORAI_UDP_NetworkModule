@@ -24,6 +24,13 @@ Link : https://help-morai-sim.scrollhelp.site/
 
 - python >= 3.7
 
+# Setup
+```
+- 요기 들어가기 ./EgoNetwork/CmdControl/MoraiCmdController.py
+- IP에 시뮬레이터 ip 넣기
+- port에 시뮬레이터에 보이는 Host PORT 넣기
+- 저장하기
+```
 
 # Runninng
 ```
