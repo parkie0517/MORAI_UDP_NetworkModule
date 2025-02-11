@@ -25,27 +25,18 @@ Link : https://help-morai-sim.scrollhelp.site/
 - python >= 3.7
 
 
-# 카메라 영상 보기
-## Setup
-```
-pip install opencv-python
-```
+# 공통 setup
+Please follow this part if you want to see the camera images or send commands to the simulator.
+- f4눌러서 네트워크 세팅 들어가기
+- 아래 보이는 것처럼 ip세팅하기 (확대해서 확인하기)
+    - host에는 시뮬레이터를 돌리는 윈도우/우분투 ip
+    - destination ip에는 e2e 알고리즘 돌리는 서버 주소
+    - port는 상관 없음
+    ![alt text](./guide/src/network.png)
 
-## Runninng
-```
-python ./Sensor/Camera.py
-```
+# 카메라 영상 보기
+Single Camera: please refer to [get camera guide](./guide/get_camera_single.md)
+Multi Camera: refer to [get multi view camera guide](./guide/get_camera_multi.md)
 
 # Cmd 보내기
-## Setup
-```
-- 요기 들어가기 ./EgoNetwork/CmdControl/MoraiCmdController.py
-- IP에 시뮬레이터 ip 넣기
-- port에 시뮬레이터에 보이는 Host PORT 넣기
-- 저장하기
-```
-
-## Runninng
-```
-python ./EgoNetwork/CmdControl/MoraiCmdController.py
-```
+please refer to [send command guide](./guide/send_cmd.md)
