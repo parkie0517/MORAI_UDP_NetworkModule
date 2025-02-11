@@ -6,7 +6,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 from lib.network.UDP import Sender
 from lib.define.EgoCtrlCmd import EgoCtrlCmd
 
-IP = '127.0.0.1' 
+IP = '143.248.50.159' 
 PORT = 9093
 
 #Protocol정보

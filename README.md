@@ -1,5 +1,3 @@
-[![MORAILog](./docs/MORAI_Logo.png)](https://www.morai.ai)
-===
 # MORAI - Network Module example (UDP)
 
 This is an example of sending and receiving UDP data in `MORAI SIM: Drive`  
@@ -25,3 +23,9 @@ Link : https://help-morai-sim.scrollhelp.site/
 # Requirement
 
 - python >= 3.7
+
+
+# Runninng
+```
+conda activate moari_udp
+```
