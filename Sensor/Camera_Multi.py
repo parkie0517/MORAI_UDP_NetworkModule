@@ -19,23 +19,27 @@ def main():
     cam_data_2 = Receiver(IP, PORT_2, Camera())
     
     while True:
-        # Retrieve image data from Camera 1
-        data_1 = cam_data_1.get_data()   
-        try:
-            image_1 = cv2.imdecode(np.frombuffer(data_1.image.data, dtype=np.uint8), cv2.IMREAD_COLOR)
-        except Exception as e:
-            print("Camera 1 error:", e)
+        # Process Camera 1 feed
+        data_1 = cam_data_1.get_data()
+        buf1 = np.frombuffer(data_1.image.data, dtype=np.uint8)
+        if buf1.size == 0:
+            # Buffer is empty; skip decoding and create a blank image if needed
+            # print("Received empty data for Camera 1")
             image_1 = None
-
-        # Retrieve image data from Camera 2
+        else:
+            image_1 = cv2.imdecode(buf1, cv2.IMREAD_COLOR)
+        
+        # Process Camera 2 feed
         data_2 = cam_data_2.get_data()
-        try:
-            image_2 = cv2.imdecode(np.frombuffer(data_2.image.data, dtype=np.uint8), cv2.IMREAD_COLOR)
-        except Exception as e:
-            print("Camera 2 error:", e)
+        buf2 = np.frombuffer(data_2.image.data, dtype=np.uint8)
+        if buf2.size == 0:
+            # Buffer is empty; skip decoding and create a blank image if needed
+            # print("Received empty data for Camera 2")
             image_2 = None
+        else:
+            image_2 = cv2.imdecode(buf2, cv2.IMREAD_COLOR)
 
-        # If both images are missing, continue to next iteration
+        # If both images are missing, skip this iteration
         if image_1 is None and image_2 is None:
             continue
 
@@ -45,13 +49,13 @@ def main():
         if image_2 is None and image_1 is not None:
             image_2 = np.zeros_like(image_1)
             
-        # Ensure the images have the same height before concatenation.
+        # Ensure both images have the same height for horizontal concatenation
         if image_1.shape[0] != image_2.shape[0]:
-            # Resize image_2 to match image_1's height (adjust width proportionally)
+            # Resize image_2 to match image_1's height (adjusting width proportionally)
             new_width = int(image_2.shape[1] * (image_1.shape[0] / image_2.shape[0]))
             image_2 = cv2.resize(image_2, (new_width, image_1.shape[0]))
 
-        # Combine the images horizontally
+        # Concatenate images side by side
         combined_image = cv2.hconcat([image_1, image_2])
         
         # Display the combined feed
