@@ -36,19 +36,23 @@ def main():
     2: Velocity(velocity,steer)
     3: Acceleration(acceleration,steer)
     """
-    data.cmd_type = 1
+    
+    # 1. 이건 throttle로 운전하는 설정
+    data.cmd_type = 1 
     data.accel = 0.5
     data.brake = 0.1
 
-    # data.cmd_type = 2
+    # 2. 이건 속도로 운전하는 설정
+    # data.cmd_type = 2 
     # data.velocity = 30 #km
 
+    # 3. 이거 가속도로 운전하는 설정
     # data.cmd_type = 3
     # data.acceleration = 5 #m/s2
     
-    data.steer = 0.1 # -1 ~ 1  
+    data.steer = -0.5 # -1 ~ 1  
     while 1:
-        ego_ctrl.send(data)
+        ego_ctrl.send(data) # 이걸로 데이터 전송
         time.sleep(0.1)
 
         

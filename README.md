@@ -24,7 +24,20 @@ Link : https://help-morai-sim.scrollhelp.site/
 
 - python >= 3.7
 
-# Setup
+
+# 카메라 영상 보기
+## Setup
+```
+pip install opencv-python
+```
+
+## Runninng
+```
+python ./Sensor/Camera.py
+```
+
+# Cmd 보내기
+## Setup
 ```
 - 요기 들어가기 ./EgoNetwork/CmdControl/MoraiCmdController.py
 - IP에 시뮬레이터 ip 넣기
@@ -32,8 +45,7 @@ Link : https://help-morai-sim.scrollhelp.site/
 - 저장하기
 ```
 
-# Runninng
+## Runninng
 ```
-conda activate moari_udp
 python ./EgoNetwork/CmdControl/MoraiCmdController.py
 ```
