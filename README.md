@@ -28,9 +28,9 @@ Link : https://help-morai-sim.scrollhelp.site/
 # 공통 setup
 Please follow this part if you want to see the camera images or send commands to the simulator.
 - f4눌러서 네트워크 세팅 들어가기
-- 아래 보이는 것처럼 ip세팅하기 (확대해서 확인하기)
-    - host에는 시뮬레이터를 돌리는 윈도우/우분투 ip
-    - destination ip에는 e2e 알고리즘 돌리는 서버 주소
+- 아래 보이는 건 예시임. 사용자에 맞게 ip세팅하기
+    - host IP에는 시뮬레이터를 돌리는 윈도우/우분투 ip
+    - destination ip에는 e2e 알고리즘 돌리는 서버 ip 넣기
     - port는 상관 없음. 두 값이 중복되지만 않으면 괜찮음
     ![alt text](./guide/src/network.png)
 
