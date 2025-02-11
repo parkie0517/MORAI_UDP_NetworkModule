@@ -10,13 +10,24 @@ from lib.define.Camera import Camera
 
 IP = '143.248.50.159' # 이미지를 받는 컴퓨터의 ip주소
 PORT_1 = 1111 # 카메라의 destination port를 입력
-PORT_2 = 1121
+PORT_2 = 1121 # 두 번째 카메라의 destination port 입력
+# 만약 surround view를 원하면 카메라를 총 6개 세팅하면 됨
+# PORT_3 = 1131
+# PORT_4 = 1141
+# PORT_5 = 1151
+# PORT_6 = 1161
+
 
 #Protocol 정보
 #https://help-morai-sim.scrollhelp.site/ko/morai-sim-drive/24.R2/-35#id-(24.R2-ko)센서통신프로토콜-UDP
 def main():
     cam_data_1 = Receiver(IP, PORT_1, Camera())
     cam_data_2 = Receiver(IP, PORT_2, Camera())
+    # surroundview용
+    # cam_data_3 = Receiver(IP, PORT_3, Camera())
+    # cam_data_4 = Receiver(IP, PORT_4, Camera())
+    # cam_data_5 = Receiver(IP, PORT_5, Camera())
+    # cam_data_6 = Receiver(IP, PORT_6, Camera())
     
     while True:
         # Process Camera 1 feed
@@ -39,6 +50,10 @@ def main():
         else:
             image_2 = cv2.imdecode(buf2, cv2.IMREAD_COLOR)
 
+        """
+        카메라 3~6에 대한 것도 추가하면 됨
+        """
+        
         # If both images are missing, skip this iteration
         if image_1 is None and image_2 is None:
             continue
