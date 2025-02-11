@@ -28,4 +28,5 @@ Link : https://help-morai-sim.scrollhelp.site/
 # Runninng
 ```
 conda activate moari_udp
+python ./EgoNetwork/CmdControl/MoraiCmdController.py
 ```

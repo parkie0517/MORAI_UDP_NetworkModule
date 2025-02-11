@@ -50,6 +50,6 @@ class Sender:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def send(self, data):
-        pacekd_data = ctypes.string_at(ctypes.addressof(data), ctypes.sizeof(data))       
+        pacekd_data = ctypes.string_at(ctypes.addressof(data), ctypes.sizeof(data))
         print(pacekd_data, len(pacekd_data))
-        self.socket.sendto(pacekd_data,(self.ip,self.port))
+        self.socket.sendto(pacekd_data, (self.ip,self.port))

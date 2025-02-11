@@ -6,8 +6,8 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 from lib.network.UDP import Sender
 from lib.define.EgoCtrlCmd import EgoCtrlCmd
 
-IP = '143.248.50.159' 
-PORT = 9093
+IP = '143.248.50.127' # 시뮬레이터 돌리는 PC/윈도우 PC IP
+PORT = 9100 # 해당 PC의 Host 포트
 
 #Protocol정보
 #https://help-morai-sim.scrollhelp.site/ko/morai-sim-drive/24.R2/ros-1#id-(24.R2-ko)통신메시지프로토콜-EgoCtrlCmd.1
@@ -24,7 +24,7 @@ def main():
     import ctypes 
     print(ctypes.sizeof(EgoCtrlCmd()))
 
-    data.ctrl_mode = 2 # 1 : Keyboard   2 : AutoMode
+    data.ctrl_mode = 2 # 1 : Keyboard   2 : AutoMode 
     data.gear = 4  
     """
     index   0   1   2   3   4   5
