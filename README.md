@@ -35,8 +35,8 @@ Please follow this part if you want to see the camera images or send commands to
     ![alt text](./guide/src/network.png)
 
 # 카메라 영상 보기
-Single Camera: please refer to [get camera guide](./guide/get_camera_single.md)  
-Multi Camera: refer to [get multi view camera guide](./guide/get_camera_multi.md) (multi camera code does not support Bounding box visualizaiton)  
+Single Camera: please refer to [single_camera_guide](./guide/get_camera_single.md)  
+Multi Camera: refer to [multi_camera_guide](./guide/get_camera_multi.md) (multi camera code does not support Bounding box visualizaiton)  
 
 # Cmd 보내기
 please refer to [send command guide](./guide/send_cmd.md)
