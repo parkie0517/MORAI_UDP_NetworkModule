@@ -8,9 +8,9 @@ from lib.network.UDP import Receiver
 from lib.define.Camera import Camera
 
 
-IP = '143.248.50.159' # 이미지를 받는 컴퓨터의 ip주소
-PORT_1 = 1111 # 카메라의 destination port를 입력
-PORT_2 = 1121 # 두 번째 카메라의 destination port 입력
+IP = '143.248.59.11' # 이미지를 받는 컴퓨터의 ip주소
+PORT_1 = 4011 # 카메라의 destination port를 입력
+PORT_2 = 4021 # 두 번째 카메라의 destination port 입력
 # 만약 surround view를 원하면 카메라를 총 6개 세팅하면 됨
 # PORT_3 = 1131
 # PORT_4 = 1141
