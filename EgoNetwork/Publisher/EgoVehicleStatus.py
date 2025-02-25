@@ -15,13 +15,16 @@ def main():
     egovehiclestatus = Receiver(IP, PORT, EgoVehicleStatus())
     while True :
         status = egovehiclestatus.get_data()
-        print(f"pos_X: {status.pos_x}")
-        print(f"pos_Y: {status.pos_y}")
-        print(f"pos_Z: {status.pos_z}")
+        print(status)
+        time.sleep(0.1)
+        # print(f"pos_X: {status.pos_x}")
+        # print(f"pos_Y: {status.pos_y}")
+        # print(f"pos_Z: {status.pos_z}")
         
         # 커서를 3줄 위로 이동
-        sys.stdout.write("\033[F\033[F\033[F")  
-        sys.stdout.flush()
+        # sys.stdout.write("\033[F\033[F\033[F")  
+        # sys.stdout.flush()
+
         
 if __name__ == '__main__':
     main()

@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 import pygame
 
 # 네트워크 설정
-control_IP = '143.248.59.11' 
-sim_IP = '143.248.50.151'
-EGO_PORT = 5091  # 차량 상태 수신 포트 (50Hz)
-CONTROL_PORT = 9093  # 차량 제어 전송 포트
+control_IP = '143.248.59.11'  # linux ip
+sim_IP = '143.248.50.151' # windows simulator ip
+EGO_PORT = 5091  # receives ego vehicle status using this port (50Hz)
+CONTROL_PORT = 9093  # port of the windows simulator that receives the control command sent from the linux server.
 
 # Receiver 설정
 ego_receiver = Receiver(control_IP, EGO_PORT, EgoVehicleStatus())
@@ -35,13 +35,4 @@ with open("/home/user/e2e_challenge/MORAI_UDP_NetworkModule/hmg_mission2_global_
 waypoints = np.array(waypoints)
 
 if __name__ == '__main__':
-    # 두 개의 스레드를 생성하여 실행
-    # e2e_thread = threading.Thread(target=e2e_model_loop, daemon=True)
-    control_thread = threading.Thread(target=control_loop, daemon=True)
-
-    # e2e_thread.start()
-    control_thread.start()
-
-    # 메인 스레드가 종료되지 않도록 유지
-    # e2e_thread.join()
-    control_thread.join()
+    # Use 2 threads. first receieves the ego vehicle status. the second controls the car in the simulator

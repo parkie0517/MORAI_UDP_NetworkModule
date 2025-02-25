@@ -204,10 +204,57 @@ def e2e_model_loop():
 def normalize(value, min_val, max_val, new_min, new_max):
     return int((value - min_val) / (max_val - min_val) * (new_max - new_min) + new_min)
 ### **🔹 50Hz: Vehicle State 수신 & PID Controller로 Ego Control 업데이트**
+
+
+import torch
+# NOTE: 기원 추가 250225
+def compute_vehicle_control(ego_data, waypoints):
+    dt = 0.1  # time step
+    L = ego_data.wheelbase  # vehicle's wheelbase
+    max_accel = 5.0  # Maximum acceleration [m/s^2]
+    max_brake = 5.0  # Maximum braking deceleration [m/s^2]
+    max_steer = 0.5  # Maximum steering angle [rad]
+
+    # 현재 ego 차량 상태 추출
+    pos_x = torch.tensor(ego_data.pos_x)
+    pos_y = torch.tensor(ego_data.pos_y)
+    yaw = torch.deg2rad(torch.tensor(ego_data.yaw))  # degree to radian
+    v_ego = torch.hypot(torch.tensor(ego_data.vel_x), torch.tensor(ego_data.vel_y))  # 현재 속도
+
+    # Waypoints 정보
+    x_wp = torch.tensor(waypoints[:, 0])
+    y_wp = torch.tensor(waypoints[:, 1])
+    yaw_wp = torch.deg2rad(torch.tensor(waypoints[:, 2]))  # degree to radian
+
+    # 속도 추정: waypoint 간 거리 차이 기반
+    dx = torch.diff(x_wp, prepend=pos_x.unsqueeze(0))
+    dy = torch.diff(y_wp, prepend=pos_y.unsqueeze(0))
+    dist = torch.hypot(dx, dy)
+    v_wp = dist / dt  # 속도 추정
+
+    # 가속도 a 계산
+    v_prev = torch.cat([v_ego.unsqueeze(0), v_wp[:-1]], dim=0)  # 이전 속도
+    a = (v_wp - v_prev) / dt  # 가속도
+
+    # 🚀 `accel`, `brake` 변환
+    accel = torch.clamp(a / max_accel, min=0, max=1)  # 가속 페달 (0~1)
+    brake = torch.clamp(-a / max_brake, min=0, max=1)  # 브레이크 (0~1)
+
+    # 조향각 (delta) 계산
+    theta_prev = torch.cat([yaw.unsqueeze(0), yaw_wp[:-1]], dim=0)  # 이전 방향
+    d_theta = (yaw_wp - theta_prev) / dt  # 회전율
+    delta = torch.atan(d_theta * L / v_wp.clamp(min=1e-6))  # 조향각 추정
+
+    # 🔄 `steer` 변환 ([-1, 1] 범위)
+    steer = torch.clamp(delta / max_steer, min=-1, max=1)
+
+    # Control 값 반환
+    # control = torch.stack([accel, brake, steer], dim=-1)
+    return accel, brake, steer
+
+
 def control_loop():
     global latest_waypoint
-    
-    
     
     hz = 0.1  # 50Hz (0.02초 주기)
     interval = 1 / hz
@@ -236,7 +283,8 @@ def control_loop():
         if ego_x ==0:
             continue
         
-        breakpoint()
+        # breakpoint()
+        accel, brake, steer = compute_vehicle_control(ego_data, waypoints)
         # Step 2: 최신 Waypoint 가져오기 (스레드 동기화)
         # with waypoint_lock:
         #     if latest_waypoint is None:
@@ -244,6 +292,7 @@ def control_loop():
         #     target_x, target_y = latest_waypoint["waypoint"]
         #     target_speed = latest_waypoint["target_speed"]
         
+        '''
         waypoint_x, waypoint_y, waypoint_yaw, waypoint_curvature, waypoint_idx, closest_k_indices = find_closest_waypoint(ego_x, ego_y, waypoints)
         target_speed = max_speed / (1 + 10 * abs(waypoint_curvature))
         target_velocity = max(min_speed, min(target_speed, max_speed))
@@ -294,14 +343,18 @@ def control_loop():
 
         # Step 6: 차량 제어 명령 전송
         # continue
+        '''
+        accel, brake, steer
         data = EgoCtrlCmd()
         data.ctrl_mode = 2  # AutoMode
         data.gear = 4
         data.cmd_type = 2
         data.steer = steer  # -1 ~ 1
+        data.accel = accel      # giwon 추가 
+        data.brake = brake      # giwon 추가 
         data.velocity = target_velocity  # 0 ~ 1
         ego_ctrl.send(data)
-
+        
         # Step 7: 50Hz 유지 ###################
         time.sleep(0.1)
         # elapsed_time = time.time() - start_time
