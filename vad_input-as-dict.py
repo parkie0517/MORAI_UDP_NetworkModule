@@ -70,9 +70,9 @@ def print_status(shared_dict):
         # 터미널에는 딕셔너리의 키들만 출력 (영상 데이터는 생략)
         if bool(shared_dict):
             # print("현재 dict keys:", list(shared_dict.keys()))
-            print("X: ", shared_dict['pos_x'])
-            print("Y: ", shared_dict['pos_y'])
-            print("Z: ", shared_dict['pos_z'])
+            print("pos_X: ", shared_dict['pos_x'])
+            print("pos_Y: ", shared_dict['pos_y'])
+            print("pos_Z: ", shared_dict['pos_z'])
             print("\n\n")
         time.sleep(0.5)
 

@@ -17,8 +17,8 @@ EGO_PORT = 1201  # 차량 상태 수신 포트 (50Hz)
 CONTROL_PORT = 1300  # 차량 제어 전송 포트
 
 # Receiver 설정
-camera_receivers = [Receiver(IP, port, Camera()) for port in CAMERA_PORTS]
-ego_receiver = Receiver(IP, EGO_PORT, EgoVehicleStatus())
+# camera_receivers = [Receiver(IP, port, Camera()) for port in CAMERA_PORTS]
+# ego_receiver = Receiver(IP, EGO_PORT, EgoVehicleStatus())
 
 # Sender 설정
 ego_ctrl = Sender(IP, CONTROL_PORT)
@@ -29,15 +29,16 @@ waypoint_lock = threading.Lock()  # 데이터 동기화용 Lock
 
 
 waypoints = []
-with open("/mnt/data/hmg_mission1_global_path.txt", "r") as file:
+with open("/home/user/e2e_challenge/MORAI_UDP_NetworkModule/hmg_mission2_global_path.txt", "r") as file:
     for line in file:
         parts = line.strip().split()
         if len(parts) >= 4:
-            x, y, heading = map(float, parts[1:4])  # X, Y, Heading만 추출
-            waypoints.append((x, y, heading))
+            x, y, z= map(float, parts[1:4])  # X, Y, Z 추출
+            waypoints.append((x, y, z))
 
 waypoints = np.array(waypoints)
-
+# x1,y1,z1=waypoints[5]
+# breakpoint()
 # **🔹 E2E Autonomous Driving Model (더미 모델)**
 class AutonomousDrivingModel:
     def predict(self, data):
@@ -54,10 +55,12 @@ model = AutonomousDrivingModel()
 def find_closest_waypoint(vehicle_x, vehicle_y, waypoints):
     distances = np.sqrt((waypoints[:, 0] - vehicle_x) ** 2 + (waypoints[:, 1] - vehicle_y) ** 2)
     closest_idx = np.argmin(distances)
-    x1,y2,_ = waypoints[closest_idx]
-    return waypoints[closest_idx], closest_idx
+    x1,y1,_ = waypoints[closest_idx]
+    x2,y2,_ = waypoints[closest_idx+1]
+    yaw = math.atan2(y2 - y1, x2 - x1)
+    return x1,y1, yaw
 
-def compute_control(vehicle_x, vehicle_y, vehicle_heading, target_x, target_y, target_heading):
+def compute_control(vehicle_x, vehicle_y, vehicle_heading, target_x, target_y, waypoint_yaw):
     dx = target_x - vehicle_x
     dy = target_y - vehicle_y
     # target_yaw = math.atan2(dy, dx)
@@ -149,9 +152,9 @@ def control_loop():
         #         continue  # 아직 waypoint가 생성되지 않았다면 건너뜀
         #     target_x, target_y = latest_waypoint["waypoint"]
         #     target_speed = latest_waypoint["target_speed"]
-        closest_wp, idx = find_closest_waypoint(ego_x, ego_y, waypoints)
+        waypoint_x, waypoint_y, waypoint_yaw = find_closest_waypoint(ego_x, ego_y, waypoints)
         
-        throttle, steer, brake = compute_control(ego_x, ego_y, vehicle_heading, *closest_wp)
+        throttle, steer, brake = compute_control(ego_x, ego_y, ego_yaw, waypoint_x, waypoint_y, waypoint_yaw)
 
         # # Step 3: Steering PID 제어 (Yaw Error 계산)
         # yaw_error = np.arctan2(target_y - ego_y, target_x - ego_x) - ego_yaw
