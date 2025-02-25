@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # 데이터 파일 경로
-file_path = "hmg_mission1_global_path.txt"
+file_path = "hmg_mission2_global_path.txt"
 
 # 데이터 읽기
 coordinates = []

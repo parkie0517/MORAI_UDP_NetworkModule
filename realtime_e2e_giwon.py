@@ -208,6 +208,7 @@ def control_loop():
     global latest_waypoint
     
     
+    
     hz = 0.1  # 50Hz (0.02초 주기)
     interval = 1 / hz
     min_x, max_x = waypoints[:, 0].min(), waypoints[:, 0].max()
@@ -234,6 +235,8 @@ def control_loop():
         print(f"ego_x: {ego_x}  / ego_y: {ego_y}  / ego_speed: {ego_speed}  /  ego_yaw: {ego_yaw}")
         if ego_x ==0:
             continue
+        
+        breakpoint()
         # Step 2: 최신 Waypoint 가져오기 (스레드 동기화)
         # with waypoint_lock:
         #     if latest_waypoint is None:
@@ -241,7 +244,7 @@ def control_loop():
         #     target_x, target_y = latest_waypoint["waypoint"]
         #     target_speed = latest_waypoint["target_speed"]
         
-        waypoint_x, waypoint_y, waypoint_yaw, waypoint_curvature, waypoint_idx,closest_k_indices = find_closest_waypoint(ego_x, ego_y, waypoints)
+        waypoint_x, waypoint_y, waypoint_yaw, waypoint_curvature, waypoint_idx, closest_k_indices = find_closest_waypoint(ego_x, ego_y, waypoints)
         target_speed = max_speed / (1 + 10 * abs(waypoint_curvature))
         target_velocity = max(min_speed, min(target_speed, max_speed))
         steer = compute_steer(ego_x, ego_y, ego_yaw,ego_speed, waypoint_x, waypoint_y, waypoint_yaw)
