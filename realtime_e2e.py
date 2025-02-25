@@ -9,7 +9,7 @@ from lib.network.UDP import Receiver, Sender
 from lib.define.Camera import Camera
 from lib.define.EgoVehicleStatus import EgoVehicleStatus
 from lib.define.EgoCtrlCmd import EgoCtrlCmd
-
+import math
 # 네트워크 설정
 IP = '143.248.50.159'
 CAMERA_PORTS = [1111, 1121, 1131, 1141, 1151, 1161]  # 6개 카메라 포트
@@ -60,11 +60,11 @@ def find_closest_waypoint(vehicle_x, vehicle_y, waypoints):
     yaw = math.atan2(y2 - y1, x2 - x1)
     return x1,y1, yaw
 
-def compute_control(vehicle_x, vehicle_y, vehicle_heading, target_x, target_y, waypoint_yaw):
+def compute_control(vehicle_x, vehicle_y, vehicle_heading,vehicle_speed, target_x, target_y, waypoint_yaw):
     dx = target_x - vehicle_x
     dy = target_y - vehicle_y
     # target_yaw = math.atan2(dy, dx)
-    heading_error = target_yaw - vehicle_heading
+    heading_error = waypoint_yaw - vehicle_heading
     # steer = max(min(heading_error, 0.5), -0.5)  # 스티어링 값 범위 제한
     cte = dy * math.cos(waypoint_yaw) - dx * math.sin(waypoint_yaw)
     # Stanley Control Law
@@ -78,7 +78,7 @@ def compute_control(vehicle_x, vehicle_y, vehicle_heading, target_x, target_y, w
     dy = closest_wp[1] - vehicle_y
     
 
-    return throttle, steer, brake
+    return steer
 
 ### **🔹 PID Controller 설정**
 # 스티어링 PID (yaw error 기반)
@@ -154,7 +154,7 @@ def control_loop():
         #     target_speed = latest_waypoint["target_speed"]
         waypoint_x, waypoint_y, waypoint_yaw = find_closest_waypoint(ego_x, ego_y, waypoints)
         
-        throttle, steer, brake = compute_control(ego_x, ego_y, ego_yaw, waypoint_x, waypoint_y, waypoint_yaw)
+        throttle, steer, brake = compute_control(ego_x, ego_y, ego_yaw,ego_speed, waypoint_x, waypoint_y, waypoint_yaw)
 
         # # Step 3: Steering PID 제어 (Yaw Error 계산)
         # yaw_error = np.arctan2(target_y - ego_y, target_x - ego_x) - ego_yaw

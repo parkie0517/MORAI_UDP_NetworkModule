@@ -25,10 +25,10 @@
 
 # 예제 셋업
 ```
-pip install opencv-python
-이 파일 열기 ./Sensor/IMU.py 
-라인 9, 10 수정하기
+conda activate vad_e2e
+이 파일 열기 ./vad_input-as-dict.py
+라인 10~13 수정하기
 
 아래 명령어로 실행하기
-python ./Sensor/IMU.py 
+python ./vad_input-as-dict.py
 ```
