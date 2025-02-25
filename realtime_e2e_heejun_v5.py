@@ -44,9 +44,12 @@ def receive_status_thread():
         time.sleep(0.02)  # roughly 50Hz
 
 def control_thread():
-    global current_status, waypoints
-    lookahead_distance = 10.0  # meters (design parameter; try increasing if wobbling persists)
-    v_desired = 2.5           # desired speed in m/s
+    global current_status, waypoints, previous_steer
+    previous_steer = 0.0
+    alpha = 0.8  # smoothing factor (0 < alpha < 1); higher means more smoothing
+    lookahead_distance = 50.0  # meters (design parameter; try increasing if wobbling persists)
+    v_desired = 1.0           # desired speed in m/s
+
 
     # Initialize PID controllers
     steer_pid = PID(1.0, 0.0, 0.1, setpoint=0)
@@ -77,8 +80,10 @@ def control_thread():
             heading_error = (heading_error + math.pi) % (2 * math.pi) - math.pi
 
             # Compute steering command using PID
-            steer_command = steer_pid(heading_error)
-
+            #steer_command = steer_pid(heading_error)
+            raw_steer_command = steer_pid(heading_error)
+            steer_command = alpha * previous_steer + (1 - alpha) * raw_steer_command
+            previous_steer = steer_command
             # Speed control: compute acceleration command from speed error
             accel_command = speed_pid(v)
             if accel_command >= 0:
