@@ -41,7 +41,7 @@ ego_state_lock = threading.Lock()
 def receive_thread():
     global ego_state
     while True:
-        status = ego_receiver.recv()  # Blocking receive of EgoVehicleStatus
+        status = ego_receiver.get_data()  # Blocking receive of EgoVehicleStatus
         with ego_state_lock:
             ego_state = status
 
