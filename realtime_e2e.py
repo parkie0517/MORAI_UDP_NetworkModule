@@ -27,6 +27,28 @@ ego_ctrl = Sender(IP, CONTROL_PORT)
 latest_waypoint = None
 waypoint_lock = threading.Lock()  # 데이터 동기화용 Lock
 
+class PIDController:
+    def __init__(self, kp, ki, kd):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.prev_error = 0.0
+        self.integral = 0.0
+
+    def control(self, error, dt):
+        """
+        PID 속도 제어
+        error: 목표 속도와 현재 속도의 차이
+        dt: 시간 간격 (s)
+        """
+        self.integral += error * dt
+        derivative = (error - self.prev_error) / dt
+        self.prev_error = error
+
+        return self.kp * error + self.ki * self.integral + self.kd * derivative
+
+speed_pid = PIDController(kp=0.5, ki=0.02, kd=0.1)
+
 
 waypoints = []
 with open("/home/user/e2e_challenge/MORAI_UDP_NetworkModule/hmg_mission2_global_path.txt", "r") as file:
@@ -57,28 +79,47 @@ def find_closest_waypoint(vehicle_x, vehicle_y, waypoints):
     closest_idx = np.argmin(distances)
     x1,y1,_ = waypoints[closest_idx]
     x2,y2,_ = waypoints[closest_idx+1]
+    x0,y0,_ = waypoints[closest_idx - 1]
+        x2, y2 = waypoints[i]
+        x3, y3 = waypoints[i + 1]
+
+        # 두 선분의 길이 계산
+        L1 = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        L2 = np.sqrt((x3 - x2) ** 2 + (y3 - y2) ** 2)
+        L3 = np.sqrt((x3 - x1) ** 2 + (y3 - y1) ** 2)
+
+        # 삼각형 면적(A) 계산 (신호 방식)
+        A = abs(0.5 * ((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)))
+
+        # 곡률 계산
+        if L1 * L2 * L3 == 0:
+            curvature = 0.0  # 분모가 0이면 직선으로 간주
+        else:
+            curvature = (2 * A) / (L1 * L2 * L3)
     yaw = math.atan2(y2 - y1, x2 - x1)
     return x1,y1, yaw
 
-def compute_control(vehicle_x, vehicle_y, vehicle_heading,vehicle_speed, target_x, target_y, waypoint_yaw):
+def compute_steer(vehicle_x, vehicle_y, vehicle_heading,vehicle_speed, target_x, target_y, waypoint_yaw):
     dx = target_x - vehicle_x
     dy = target_y - vehicle_y
-    # target_yaw = math.atan2(dy, dx)
     heading_error = waypoint_yaw - vehicle_heading
-    # steer = max(min(heading_error, 0.5), -0.5)  # 스티어링 값 범위 제한
     cte = dy * math.cos(waypoint_yaw) - dx * math.sin(waypoint_yaw)
     # Stanley Control Law
     steer = heading_error + math.atan2(k * cte, vehicle_speed + 1e-6)
-    
-    
-    throttle = 0.3  # 기본 속도 유지
-    brake = 0.0
-    
-    dx = closest_wp[0] - vehicle_x
-    dy = closest_wp[1] - vehicle_y
-    
-
+    steer = max(min(steer, 0.5), -0.5)
     return steer
+
+def compute_target_speed(waypoint_curvature, max_speed=15.0, min_speed=3.0):
+    """
+    곡률 기반 목표 속도 계산
+    waypoint_curvature: 현재 웨이포인트의 곡률 값 (곡률이 클수록 커브가 급함)
+    max_speed: 최대 속도 (m/s)
+    min_speed: 최소 속도 (m/s)
+    """
+    # 곡률이 클수록 속도를 줄임 (곡률이 0이면 최대 속도 유지)
+    target_speed = max_speed / (1 + 5 * abs(waypoint_curvature))
+
+    return max(min_speed, min(target_speed, max_speed))
 
 ### **🔹 PID Controller 설정**
 # 스티어링 PID (yaw error 기반)
