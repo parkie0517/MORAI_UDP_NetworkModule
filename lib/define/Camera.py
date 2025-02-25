@@ -25,7 +25,7 @@ class Camera(Base):
         if self.header.decode() == 'MOR':
             
             ctypes.memmove(ctypes.addressof(self.image), self.data, self.image_size)            
-
+            
             # print(self.image.tail)
             self.buffer += bytes(self.image.jpeg_data)            
             if self.image.tail.decode() == 'EI':                

@@ -7,7 +7,7 @@ from lib.define.Camera import Camera
 from lib.define.EgoVehicleStatus import EgoVehicleStatus
 
 # 데이터 전송 받을 컴퓨터 IP와 포트 설정
-IP = '143.248.59.11'
+IP = '143.248.59.11' # 데이터를 받을 리눅스 서버 IP 입력하기
 CAMERA_PORT_1 = 4011  # 첫 번째 카메라 포트
 CAMERA_PORT_2 = 4021  # 두 번째 카메라 포트
 EGO_PORT = 4091       # EgoVehicleStatus 포트
@@ -16,7 +16,8 @@ def camera_process():
     # 두 카메라의 Receiver 객체 생성
     cam_data_1 = Receiver(IP, CAMERA_PORT_1, Camera())
     cam_data_2 = Receiver(IP, CAMERA_PORT_2, Camera())
-    
+    # 카메라 5개 사용할 거면 아래에 3개 더 추가하면 됨
+
     while True:
         # 첫 번째 카메라 데이터 처리
         data_1 = cam_data_1.get_data()
