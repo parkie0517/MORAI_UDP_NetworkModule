@@ -9,6 +9,7 @@ from lib.network.UDP import Receiver, Sender
 from lib.define.EgoVehicleStatus import EgoVehicleStatus
 from lib.define.EgoCtrlCmd import EgoCtrlCmd
 import math
+import matplotlib.pyplot as plt
 
 # Network settings
 control_IP = '143.248.59.11'  # Linux server IP
@@ -26,7 +27,7 @@ with open("/home/user/e2e_challenge/MORAI_UDP_NetworkModule/hmg_mission2_global_
     for line in file:
         parts = line.strip().split()
         if len(parts) >= 4:
-            # Extract X, Y, Z (ignoring the first string field)
+            # Extract X, Y, Z (ignoring the first field which is an identifier)
             x, y, z = map(float, parts[1:4])
             waypoints.append((x, y, z))
 waypoints = np.array(waypoints)
@@ -44,11 +45,11 @@ def receive_status_thread():
 
 def control_thread():
     global current_status, waypoints
-    lookahead_distance = 5.0  # meters (hyper parameter)
-    v_desired = 1.0           # desired speed in m/s (hyper parameter)
+    lookahead_distance = 10.0  # meters (design parameter; try increasing if wobbling persists)
+    v_desired = 2.5           # desired speed in m/s
 
     # Initialize PID controllers
-    steer_pid = PID(1.0, 0.0, 0.1, setpoint=0) (hyper parameter)
+    steer_pid = PID(1.0, 0.0, 0.1, setpoint=0)
     steer_pid.output_limits = (-1.0, 1.0)
     speed_pid = PID(0.5, 0.0, 0.05, setpoint=v_desired)
     speed_pid.output_limits = (-1.0, 1.0)
@@ -57,31 +58,29 @@ def control_thread():
 
     while True:
         if current_status is not None:
-            # Get current state from the received status
+            # Extract current state
             x = current_status.pos_x
             y = current_status.pos_y
-            # Convert yaw from degrees to radians for calculations
+            # Convert yaw (assumed in degrees) to radians
             yaw = math.radians(current_status.yaw)
             v = current_status.signed_vel
 
-            # Find the target waypoint based on the lookahead distance
-            dists = np.sqrt((waypoints[:, 0] - x) ** 2 + (waypoints[:, 1] - y) ** 2)
-            # Select the waypoint whose distance is closest to the lookahead distance
+            # Compute distances to all waypoints
+            dists = np.sqrt((waypoints[:, 0] - x)**2 + (waypoints[:, 1] - y)**2)
+            # Select the waypoint closest to the desired lookahead distance
             target_index = np.argmin(np.abs(dists - lookahead_distance))
             target_point = waypoints[target_index, :2]
 
-            # Compute desired heading from current position to target waypoint
+            # Calculate desired heading and heading error (wrapped to [-pi, pi])
             desired_heading = math.atan2(target_point[1] - y, target_point[0] - x)
-            # Calculate heading error (wrap to [-pi, pi])
             heading_error = desired_heading - yaw
             heading_error = (heading_error + math.pi) % (2 * math.pi) - math.pi
 
-            # Use PID to compute steering command based on heading error
+            # Compute steering command using PID
             steer_command = steer_pid(heading_error)
 
-            # Compute speed control using PID on speed error
+            # Speed control: compute acceleration command from speed error
             accel_command = speed_pid(v)
-            # Map the acceleration command to throttle (accel) and brake values
             if accel_command >= 0:
                 accel = min(accel_command, 1.0)
                 brake = 0.0
@@ -89,25 +88,52 @@ def control_thread():
                 accel = 0.0
                 brake = min(-accel_command, 1.0)
 
-            # Build control command message
+            # Build and send control command
             cmd = EgoCtrlCmd()
-            cmd.ctrl_mode = 2   # Auto mode (as per MoraiCmdController.py)
-            cmd.gear = 4        # Set gear (example: D)
+            cmd.ctrl_mode = 2   # Auto mode
+            cmd.gear = 4        # Gear (e.g., D)
             cmd.cmd_type = 1    # Throttle control mode
             cmd.accel = accel
             cmd.brake = brake
             cmd.steer = steer_command
-            
-            # Send the command via UDP
+
             ego_ctrl.send(cmd)
         time.sleep(dt)
 
+def visualization_thread():
+    # Set up the matplotlib interactive plot
+    plt.ion()
+    fig, ax = plt.subplots()
+    # Plot the global path as a blue line
+    ax.plot(waypoints[:, 0], waypoints[:, 1], 'b-', label='Global Path')
+    # Create a red dot for the vehicle position
+    vehicle_dot, = ax.plot([], [], 'ro', markersize=8, label='Vehicle Position')
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.legend()
+    
+    # Set plot limits with a margin
+    margin = 10
+    ax.set_xlim(np.min(waypoints[:, 0]) - margin, np.max(waypoints[:, 0]) + margin)
+    ax.set_ylim(np.min(waypoints[:, 1]) - margin, np.max(waypoints[:, 1]) + margin)
+    
+    while True:
+        if current_status is not None:
+            x = current_status.pos_x
+            y = current_status.pos_y
+            vehicle_dot.set_data(x, y)
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+        time.sleep(0.1)
+
 if __name__ == '__main__':
-    # Start two threads: one for receiving vehicle status and one for control
+    # Start threads for receiving status, control, and visualization
     t1 = threading.Thread(target=receive_status_thread, daemon=True)
     t2 = threading.Thread(target=control_thread, daemon=True)
+    t3 = threading.Thread(target=visualization_thread, daemon=True)
     t1.start()
     t2.start()
+    t3.start()
 
     # Keep the main thread alive
     while True:
