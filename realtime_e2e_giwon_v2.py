@@ -30,44 +30,13 @@ ego_ctrl = Sender(sim_IP, CONTROL_PORT)
 latest_waypoint = None
 waypoint_lock = threading.Lock()  # 데이터 동기화용 Lock
 
-
-waypoints = []
-with open("/home/user/e2e_challenge/MORAI_UDP_NetworkModule/hmg_mission2_global_path.txt", "r") as file:
-    for line in file:
-        parts = line.strip().split()
-        if len(parts) >= 4:
-            x, y, z= map(float, parts[1:4])  # X, Y, Z 추출
-            waypoints.append((x, y, z))
-
-waypoints = np.array(waypoints)
-# x1,y1,z1=waypoints[5]
-
 # **🔹 Pygame 초기화**
 pygame.init()
-PADDING_RATIO = 0.1  
-
-min_x, max_x = waypoints[:, 0].min(), waypoints[:, 0].max()
-min_y, max_y = waypoints[:, 1].min(), waypoints[:, 1].max()
-# **🔹 Padding 추가**
-padding_x = (max_x - min_x) * PADDING_RATIO
-padding_y = (max_y - min_y) * PADDING_RATIO
-padding_t=max(padding_x,padding_y)
-min_x -= padding_t
-max_x += padding_t
-min_y -= padding_t
-max_y += padding_t
-
-y_x_ratio=(max_y-min_y)/(max_x-min_x)
-x_y_ratio=(max_x-min_x)/(max_y-min_y)
-if x_y_ratio < 1:
-    y_x_ratio = 1
-else:
-    x_y_ratio = 1
-
-WIDTH, HEIGHT = 800*x_y_ratio, 800*y_x_ratio
+WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Ego Vehicle & Waypoints Visualization")
 # **🔹 패딩 비율 (전체 범위의 10%)**
+PADDING_RATIO = 0.1  
 # **🔹 색상 정의**
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
@@ -99,7 +68,17 @@ class PIDController:
 speed_pid = PIDController(kp=0.5, ki=0.02, kd=0.1)
 max_speed = 30
 min_speed = 10
+waypoints = []
+with open("/home/user/e2e_challenge/MORAI_UDP_NetworkModule/hmg_mission2_global_path.txt", "r") as file:
+    for line in file:
+        parts = line.strip().split()
+        if len(parts) >= 4:
+            x, y, z= map(float, parts[1:4])  # X, Y, Z 추출
+            waypoints.append((x, y, z))
 
+waypoints = np.array(waypoints)
+# x1,y1,z1=waypoints[5]
+# breakpoint()
 # **🔹 E2E Autonomous Driving Model (더미 모델)**
 class AutonomousDrivingModel:
     def predict(self, data):
@@ -157,7 +136,7 @@ def compute_steer(vehicle_x, vehicle_y, vehicle_heading,vehicle_speed, target_x,
     velocity_factor = max(vehicle_speed, 5.0) 
     steer = heading_error + math.atan2(k * cte, velocity_factor)
     # print(steer)
-    steer = min(max(steer/10, -1), 1)
+    steer = max(min(steer, 0.5), -0.5)
     return steer
 
 def compute_target_speed(waypoint_curvature, max_speed=15.0, min_speed=3.0):
@@ -225,15 +204,79 @@ def e2e_model_loop():
 def normalize(value, min_val, max_val, new_min, new_max):
     return int((value - min_val) / (max_val - min_val) * (new_max - new_min) + new_min)
 ### **🔹 50Hz: Vehicle State 수신 & PID Controller로 Ego Control 업데이트**
+
+
+import torch
+# NOTE: 기원 추가 250225
+import torch
+
+def compute_vehicle_control(ego_data, waypoints, current_time_waypoint):       # Ego Centric ver
+    dt = 0.1  # time step
+    L = ego_data.wheelbase  # vehicle's wheelbase
+    max_accel = 5.0  # Maximum acceleration [m/s^2]
+    max_brake = 5.0  # Maximum braking deceleration [m/s^2]
+    max_steer = 0.5  # Maximum steering angle [rad]
+
+    # Ego 차량 상태
+    pos_x = torch.tensor(ego_data.pos_x)
+    pos_y = torch.tensor(ego_data.pos_y)
+    yaw = torch.deg2rad(torch.tensor(ego_data.yaw))  # degree to radian
+    v_ego = torch.hypot(torch.tensor(ego_data.vel_x), torch.tensor(ego_data.vel_y))  # 현재 속도
+
+    # Waypoints 정보
+    x_wp = torch.tensor(waypoints[:, 0])
+    y_wp = torch.tensor(waypoints[:, 1])
+    yaw_wp = torch.deg2rad(torch.tensor(waypoints[:, 2]))  # degree to radian
+
+    # 🚗 **Ego-Centric 변환**
+    dx = x_wp - pos_x
+    dy = y_wp - pos_y
+
+    x_wp_ego = dx * torch.cos(-yaw) + dy * torch.sin(-yaw)
+    y_wp_ego = -dx * torch.sin(-yaw) + dy * torch.cos(-yaw)
+    yaw_wp_ego = yaw_wp - yaw  # Yaw도 ego-centric으로 변환
+
+    # 속도 추정: waypoint 간 거리 차이 기반
+    dist = torch.hypot(torch.diff(x_wp_ego, prepend=torch.tensor([0.0])),
+                       torch.diff(y_wp_ego, prepend=torch.tensor([0.0])))
+    v_wp = dist / dt  # 속도 추정
+
+    # 가속도 a 계산
+    v_prev = torch.cat([v_ego.unsqueeze(0), v_wp[:-1]], dim=0)  # 이전 속도
+    a = (v_wp - v_prev) / dt  # 가속도
+
+    # 🚀 `accel`, `brake` 변환
+    accel = torch.clamp(a / max_accel, min=0, max=1)  # 가속 페달 (0~1)
+    brake = torch.clamp(-a / max_brake, min=0, max=1)  # 브레이크 (0~1)
+
+    # 조향각 (delta) 계산 (Ego-Centric yaw 사용)
+    theta_prev = torch.cat([torch.tensor([0.0]), yaw_wp_ego[:-1]], dim=0)  # Ego-Centric 기준 yaw 차이
+    d_theta = (yaw_wp_ego - theta_prev) / dt  # 회전율
+    delta = torch.atan(d_theta * L / v_wp.clamp(min=1e-6))  # 조향각 추정
+
+    # 🔄 `steer` 변환 ([-1, 1] 범위)
+    steer = torch.clamp(delta / max_steer, min=-1, max=1)
+
+    return accel[current_time_waypoint], brake[current_time_waypoint], steer[current_time_waypoint]
+
+
+
 def control_loop():
     global latest_waypoint
     
-    
     hz = 0.1  # 50Hz (0.02초 주기)
     interval = 1 / hz
+    min_x, max_x = waypoints[:, 0].min(), waypoints[:, 0].max()
+    min_y, max_y = waypoints[:, 1].min(), waypoints[:, 1].max()
+    # **🔹 Padding 추가**
+    padding_x = (max_x - min_x) * PADDING_RATIO
+    padding_y = (max_y - min_y) * PADDING_RATIO
+    min_x -= padding_x
+    max_x += padding_x
+    min_y -= padding_y
+    max_y += padding_y
     
-    breakpoint()
-    
+    current_time_waypoint = 0
     while True:
         start_time = time.time()
 
@@ -245,9 +288,15 @@ def control_loop():
         ego_vel_y = ego_data.vel_y
         ego_speed = np.sqrt((ego_vel_x) ** 2 + (ego_vel_y) ** 2)
         ego_yaw = ego_data.yaw  # 차량의 방향 (라디안)
+        # print(f"ego_x: {ego_x}  / ego_y: {ego_y}  / ego_speed: {ego_speed}  /  ego_yaw: {ego_yaw}")
+        accel, brake, steer = compute_vehicle_control(ego_data, waypoints, current_time_waypoint)
+        print(f"accel: {accel}, brake: {brake}, steer: {steer}")
+        
+        # if ego_x ==0:
+        #     continue
         print(f"ego_x: {ego_x}  / ego_y: {ego_y}  / ego_speed: {ego_speed}  /  ego_yaw: {ego_yaw}")
-        if ego_x ==0:
-            continue
+        # breakpoint()
+        
         # Step 2: 최신 Waypoint 가져오기 (스레드 동기화)
         # with waypoint_lock:
         #     if latest_waypoint is None:
@@ -255,19 +304,18 @@ def control_loop():
         #     target_x, target_y = latest_waypoint["waypoint"]
         #     target_speed = latest_waypoint["target_speed"]
         
-        waypoint_x, waypoint_y, waypoint_yaw, waypoint_curvature, waypoint_idx,closest_k_indices = find_closest_waypoint(ego_x, ego_y, waypoints)
-        target_speed = max_speed / (1 + 10 * abs(waypoint_curvature))
-        target_velocity = max(min_speed, min(target_speed, max_speed))
-        steer = compute_steer(ego_x, ego_y, ego_yaw,ego_speed, waypoint_x, waypoint_y, waypoint_yaw)
-        print(f"steer: {steer}    /  velocity: {target_velocity}   /  waypoint_idx: {waypoint_idx}, {waypoint_x}, {waypoint_y}" )
+        
+        # waypoint_x, waypoint_y, waypoint_yaw, waypoint_curvature, waypoint_idx, closest_k_indices = find_closest_waypoint(ego_x, ego_y, waypoints)
+        # target_speed = max_speed / (1 + 10 * abs(waypoint_curvature))
+        # target_velocity = max(min_speed, min(target_speed, max_speed))
+        # steer = compute_steer(ego_x, ego_y, ego_yaw, ego_speed, waypoint_x, waypoint_y, waypoint_yaw)
+        # print(f"steer: {steer}    /  velocity: {target_velocity}   /  waypoint_idx: {waypoint_idx}, {waypoint_x}, {waypoint_y}" )
         
         # **🔹 Pygame 화면 업데이트**
         screen.fill(WHITE)
         # Global Path 표시
         # **🔹 Global Path 그리기**
         for wp in waypoints:
-            # x = normalize(wp[0], 0, WIDTH)
-            # y = normalize(wp[1], 0, HEIGHT)
             x = normalize(wp[0], min_x, max_x, 0, WIDTH)
             y = normalize(wp[1], min_y, max_y, 0, HEIGHT)
             pygame.draw.circle(screen, BLACK, (x, y), 2)
@@ -276,20 +324,19 @@ def control_loop():
         ego_y_norm = normalize(ego_y, min_y, max_y, 0, HEIGHT)
         pygame.draw.circle(screen, RED, (ego_x_norm, ego_y_norm), 5)
         # **🔹 가장 가까운 k개의 웨이포인트**
+        '''
         for idx in closest_k_indices:
-            # x = normalize(waypoints[idx, 0], 0, WIDTH)
-            # y = normalize(waypoints[idx, 1], 0, HEIGHT)
             x = normalize(waypoints[idx, 0], min_x, max_x, 0, WIDTH)
             y = normalize(waypoints[idx, 1], min_y, max_y, 0, HEIGHT)
             pygame.draw.circle(screen, GREEN, (x, y), 5)
          # **🔹 선택된 최적 웨이포인트**
-        # wp_x_norm = normalize(waypoint_x, 0, WIDTH)
-        # wp_y_norm = normalize(waypoint_y, 0, HEIGHT)
         wp_x_norm = normalize(waypoint_x, min_x, max_x, 0, WIDTH)
         wp_y_norm = normalize(waypoint_y, min_y, max_y, 0, HEIGHT)
         pygame.draw.circle(screen, BLUE, (wp_x_norm, wp_y_norm), 5)
-
-        pygame.display.flip()
+        '''
+        # pygame.display.update()
+        # pygame.display.flip()
+        
         # time.sleep(0.1)  # 100ms마다 업데이트
         # breakpoint()
         
@@ -311,16 +358,21 @@ def control_loop():
 
         # Step 6: 차량 제어 명령 전송
         # continue
+        
+        # accel, brake, steer
         data = EgoCtrlCmd()
         data.ctrl_mode = 2  # AutoMode
         data.gear = 4
-        data.cmd_type = 2
+        data.cmd_type = 1
         data.steer = steer  # -1 ~ 1
-        data.velocity = target_velocity  # 0 ~ 1
-        # ego_ctrl.send(data)
-
+        data.accel = accel      # giwon 추가 
+        data.brake = brake      # giwon 추가 
+        # data.velocity = target_velocity  # 0 ~ 1
+        ego_ctrl.send(data)
+        
         # Step 7: 50Hz 유지 ###################
         time.sleep(0.1)
+        current_time_waypoint += 1
         # elapsed_time = time.time() - start_time
         # sleep_time = max(0, interval - elapsed_time)
         # time.sleep(sleep_time)

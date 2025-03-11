@@ -279,12 +279,15 @@ def control_loop():
         ego_vel_y = ego_data.vel_y
         ego_speed = np.sqrt((ego_vel_x) ** 2 + (ego_vel_y) ** 2)
         ego_yaw = ego_data.yaw  # 차량의 방향 (라디안)
-        print(f"ego_x: {ego_x}  / ego_y: {ego_y}  / ego_speed: {ego_speed}  /  ego_yaw: {ego_yaw}")
-        if ego_x ==0:
-            continue
-        
-        # breakpoint()
+        # print(f"ego_x: {ego_x}  / ego_y: {ego_y}  / ego_speed: {ego_speed}  /  ego_yaw: {ego_yaw}")
         accel, brake, steer = compute_vehicle_control(ego_data, waypoints)
+        print(f"accel: {accel}, brake: {brake}, steer: {steer}")
+        
+        # if ego_x ==0:
+        #     continue
+        print(f"ego_x: {ego_x}  / ego_y: {ego_y}  / ego_speed: {ego_speed}  /  ego_yaw: {ego_yaw}")
+        # breakpoint()
+        
         # Step 2: 최신 Waypoint 가져오기 (스레드 동기화)
         # with waypoint_lock:
         #     if latest_waypoint is None:
@@ -292,12 +295,12 @@ def control_loop():
         #     target_x, target_y = latest_waypoint["waypoint"]
         #     target_speed = latest_waypoint["target_speed"]
         
-        '''
-        waypoint_x, waypoint_y, waypoint_yaw, waypoint_curvature, waypoint_idx, closest_k_indices = find_closest_waypoint(ego_x, ego_y, waypoints)
-        target_speed = max_speed / (1 + 10 * abs(waypoint_curvature))
-        target_velocity = max(min_speed, min(target_speed, max_speed))
-        steer = compute_steer(ego_x, ego_y, ego_yaw,ego_speed, waypoint_x, waypoint_y, waypoint_yaw)
-        print(f"steer: {steer}    /  velocity: {target_velocity}   /  waypoint_idx: {waypoint_idx}, {waypoint_x}, {waypoint_y}" )
+        
+        # waypoint_x, waypoint_y, waypoint_yaw, waypoint_curvature, waypoint_idx, closest_k_indices = find_closest_waypoint(ego_x, ego_y, waypoints)
+        # target_speed = max_speed / (1 + 10 * abs(waypoint_curvature))
+        # target_velocity = max(min_speed, min(target_speed, max_speed))
+        # steer = compute_steer(ego_x, ego_y, ego_yaw, ego_speed, waypoint_x, waypoint_y, waypoint_yaw)
+        # print(f"steer: {steer}    /  velocity: {target_velocity}   /  waypoint_idx: {waypoint_idx}, {waypoint_x}, {waypoint_y}" )
         
         # **🔹 Pygame 화면 업데이트**
         screen.fill(WHITE)
@@ -312,6 +315,7 @@ def control_loop():
         ego_y_norm = normalize(ego_y, min_y, max_y, 0, HEIGHT)
         pygame.draw.circle(screen, RED, (ego_x_norm, ego_y_norm), 5)
         # **🔹 가장 가까운 k개의 웨이포인트**
+        '''
         for idx in closest_k_indices:
             x = normalize(waypoints[idx, 0], min_x, max_x, 0, WIDTH)
             y = normalize(waypoints[idx, 1], min_y, max_y, 0, HEIGHT)
@@ -320,8 +324,9 @@ def control_loop():
         wp_x_norm = normalize(waypoint_x, min_x, max_x, 0, WIDTH)
         wp_y_norm = normalize(waypoint_y, min_y, max_y, 0, HEIGHT)
         pygame.draw.circle(screen, BLUE, (wp_x_norm, wp_y_norm), 5)
-
+        
         pygame.display.flip()
+        '''
         # time.sleep(0.1)  # 100ms마다 업데이트
         # breakpoint()
         
@@ -343,16 +348,16 @@ def control_loop():
 
         # Step 6: 차량 제어 명령 전송
         # continue
-        '''
-        accel, brake, steer
+        
+        # accel, brake, steer
         data = EgoCtrlCmd()
         data.ctrl_mode = 2  # AutoMode
         data.gear = 4
-        data.cmd_type = 2
+        data.cmd_type = 1
         data.steer = steer  # -1 ~ 1
         data.accel = accel      # giwon 추가 
         data.brake = brake      # giwon 추가 
-        data.velocity = target_velocity  # 0 ~ 1
+        # data.velocity = target_velocity  # 0 ~ 1
         ego_ctrl.send(data)
         
         # Step 7: 50Hz 유지 ###################
