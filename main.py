@@ -116,7 +116,7 @@ def visualization_thread():
         if current_status is not None:
             x = current_status.pos_x
             y = current_status.pos_y
-            vehicle_dot.set_data(x, y)
+            vehicle_dot.set_data([x], [y])
             fig.canvas.draw()
             fig.canvas.flush_events()
         time.sleep(0.1)
@@ -158,10 +158,11 @@ if __name__ == '__main__':
     # Start threads for receiving status, control, and visualization
     t1 = threading.Thread(target=receive_status_thread, daemon=True)
     # t2 = threading.Thread(target=control_thread, daemon=True)
-    # t3 = threading.Thread(target=visualization_thread, daemon=True)
+    t3 = threading.Thread(target=visualization_thread, daemon=True)
+
     t1.start()
     # t2.start()
-    # t3.start()
+    t3.start()
 
     # Keep the main thread alive
     while True:
