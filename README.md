@@ -40,3 +40,18 @@ Multi Camera: refer to [multi_camera_guide](./guide/get_camera_multi.md) (multi 
 
 # Cmd 보내기
 please refer to [send command guide](./guide/send_cmd.md)
+
+
+pip install matplotlib
+pip install simple_pid
+pip install PyYAML
+
+# 연결 확인하는 방법
+```
+1. 일단 서로 ping되는 거 확인하기
+리눅스에서 윈도우로 ping이 안되면 notion 참고하기
+2. 시뮬레이터 들어가서 network 설정하기
+3. 코드 실행해서 실행되는지 확인하기
+conda activate moari_udp
+python ./e2e_heejun_v5.py
+```

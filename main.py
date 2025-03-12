@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import sys
 import time
 import threading
@@ -9,31 +8,19 @@ from lib.network.UDP import Receiver, Sender
 from lib.define.EgoVehicleStatus import EgoVehicleStatus
 from lib.define.EgoCtrlCmd import EgoCtrlCmd
 import math
+import yaml
+import argparse
 import matplotlib.pyplot as plt
 
-# Network settings
-control_IP = '143.248.59.11'  # Linux server IP
-sim_IP = '143.248.50.151'     # Windows simulator IP
-EGO_PORT = 5091               # Port to receive ego vehicle status (50Hz)
-CONTROL_PORT = 9093           # Port to send control commands to the simulator
-
-# Initialize UDP receiver and sender
-ego_receiver = Receiver(control_IP, EGO_PORT, EgoVehicleStatus())
-ego_ctrl = Sender(sim_IP, CONTROL_PORT)
-
-# Load global path waypoints from file
-waypoints = []
-with open("/home/user/e2e_challenge/MORAI_UDP_NetworkModule/hmg_mission2_global_path.txt", "r") as file:
-    for line in file:
-        parts = line.strip().split()
-        if len(parts) >= 4:
-            # Extract X, Y, Z (ignoring the first field which is an identifier)
-            x, y, z = map(float, parts[1:4])
-            waypoints.append((x, y, z))
-waypoints = np.array(waypoints)
 
 # Global variable to store the current vehicle status
 current_status = None
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Test script for loading YAML config")
+    parser.add_argument("--config", type=str, required=True, help="Path to the YAML config file (e.g., ./config/test.yaml)")
+    return parser.parse_args()
+
 
 def receive_status_thread():
     global current_status
@@ -41,13 +28,16 @@ def receive_status_thread():
         status = ego_receiver.get_data()
         if status:
             current_status = status
+            x = current_status.pos_x
+            y = current_status.pos_y
+            print(f"X: {x:.2f} Y: {y:.2f}", end='\r') # 캐리지 리턴
         time.sleep(0.02)  # roughly 50Hz
 
 def control_thread():
     global current_status, waypoints, previous_steer
     previous_steer = 0.0
     alpha = 0.8  # smoothing factor (0 < alpha < 1); higher means more smoothing
-    lookahead_distance = 50.0  # meters (design parameter; try increasing if wobbling persists)
+    lookahead_distance = 1.0  # meters (design parameter; try increasing if wobbling persists)
     v_desired = 1.0           # desired speed in m/s
 
 
@@ -56,7 +46,7 @@ def control_thread():
     steer_pid.output_limits = (-1.0, 1.0)
     speed_pid = PID(0.5, 0.0, 0.05, setpoint=v_desired)
     speed_pid.output_limits = (-1.0, 1.0)
-
+    
     dt = 0.02  # control loop time step
 
     while True:
@@ -132,13 +122,46 @@ def visualization_thread():
         time.sleep(0.1)
 
 if __name__ == '__main__':
+    args = parse_args()
+
+    with open(args.config, 'r') as f:
+        config = yaml.safe_load(f)
+
+    control_IP = config["control_IP"]
+    sim_IP = config["sim_IP"]
+    EGO_PORT = config["EGO_PORT"]
+    CONTROL_PORT = config["CONTROL_PORT"]
+
+    print("Current Network Setting")
+    print("control_IP:", control_IP)
+    print("sim_IP:", sim_IP)
+    print("EGO_PORT:", EGO_PORT)
+    print("CONTROL_PORT:", CONTROL_PORT)
+
+    # Initialize UDP receiver and sender after loading config
+    ego_receiver = Receiver(control_IP, EGO_PORT, EgoVehicleStatus())
+    ego_ctrl = Sender(sim_IP, CONTROL_PORT)
+
+    # Load global path waypoints from file
+    waypoints = []
+    with open("./hmg_mission2_global_path.txt", "r") as file:
+        for line in file:
+            parts = line.strip().split()
+            if len(parts) >= 4:
+                # Extract X, Y, Z (ignoring the first field which is an identifier)
+                x, y, z = map(float, parts[1:4])
+                waypoints.append((x, y, z))
+    waypoints = np.array(waypoints)
+
+    
+    
     # Start threads for receiving status, control, and visualization
     t1 = threading.Thread(target=receive_status_thread, daemon=True)
-    t2 = threading.Thread(target=control_thread, daemon=True)
-    t3 = threading.Thread(target=visualization_thread, daemon=True)
+    # t2 = threading.Thread(target=control_thread, daemon=True)
+    # t3 = threading.Thread(target=visualization_thread, daemon=True)
     t1.start()
-    t2.start()
-    t3.start()
+    # t2.start()
+    # t3.start()
 
     # Keep the main thread alive
     while True:

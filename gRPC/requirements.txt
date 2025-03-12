@@ -1,0 +1,5 @@
+grpcio==1.44.0
+grpcio-tools==1.44.0
+pytest==7.1.2
+pytest-html==3.1.1
+numpy
