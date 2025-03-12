@@ -1,7 +1,3 @@
-"""
-copy saved at ./main_temp2.py
-"""
-
 import sys
 import time
 import threading
@@ -26,31 +22,15 @@ def parse_args():
     return parser.parse_args()
 
 
-
-"""
-# 자동차 크기 관련 상수
-size_x: 6.195000171661377 # 
-size_y: 2.436000108718872
-size_z: 2.6649999618530273
-overhang: 0.9900000095367432 # 앞범퍼 앞바퀴 거리
-wheelbase: 3.6700000762939453 # 앞바퀴 뒷바퀴 거리
-rear_overhang: 1.534999966621399 # 뒷바퀴 뒷범퍼 거리
-"""
-
 def receive_status_thread():
     global current_status
-    print("Currnent Position")
     while True:
         status = ego_receiver.get_data()
         if status:
             current_status = status
             x = current_status.pos_x
             y = current_status.pos_y
-            # print(f"X: {x:.2f} Y: {y:.2f}", end='\r') # 캐리지 리턴
-           
-
-
-            print(current_status)
+            print(f"X: {x:.2f} Y: {y:.2f}", end='\r') # 캐리지 리턴
         time.sleep(0.02)  # roughly 50Hz
 
 def control_thread():
@@ -115,6 +95,31 @@ def control_thread():
             ego_ctrl.send(cmd)
         time.sleep(dt)
 
+def visualization_thread():
+    # Set up the matplotlib interactive plot
+    plt.ion()
+    fig, ax = plt.subplots()
+    # Plot the global path as a blue line
+    ax.plot(waypoints[:, 0], waypoints[:, 1], 'b-', label='Global Path')
+    # Create a red dot for the vehicle position
+    vehicle_dot, = ax.plot([], [], 'ro', markersize=8, label='Vehicle Position')
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.legend()
+    
+    # Set plot limits with a margin
+    margin = 10
+    ax.set_xlim(np.min(waypoints[:, 0]) - margin, np.max(waypoints[:, 0]) + margin)
+    ax.set_ylim(np.min(waypoints[:, 1]) - margin, np.max(waypoints[:, 1]) + margin)
+    
+    while True:
+        if current_status is not None:
+            x = current_status.pos_x
+            y = current_status.pos_y
+            vehicle_dot.set_data([x], [y])
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+        time.sleep(0.1)
 
 if __name__ == '__main__':
     args = parse_args()
@@ -150,38 +155,15 @@ if __name__ == '__main__':
 
     
     
-    # 쓰레드 시작
+    # Start threads for receiving status, control, and visualization
     t1 = threading.Thread(target=receive_status_thread, daemon=True)
     # t2 = threading.Thread(target=control_thread, daemon=True)
+    t3 = threading.Thread(target=visualization_thread, daemon=True)
 
     t1.start()
     # t2.start()
+    t3.start()
 
-    # Set up the matplotlib interactive plot
-    plt.ion()
-    print('1')
-    fig, ax = plt.subplots()
-    # Plot the global path as a blue line
-    print('2')
-    ax.plot(waypoints[:, 0], waypoints[:, 1], 'b-', label='Global Path')
-    print('3')
-    # Create a red dot for the vehicle position
-    vehicle_dot, = ax.plot([], [], 'ro', markersize=8, label='Vehicle Position')
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.legend()
-    print('4')
-    # Set plot limits with a margin
-    margin = 10
-    ax.set_xlim(np.min(waypoints[:, 0]) - margin, np.max(waypoints[:, 0]) + margin)
-    ax.set_ylim(np.min(waypoints[:, 1]) - margin, np.max(waypoints[:, 1]) + margin)
-    print('5')
+    # Keep the main thread alive
     while True:
-        if current_status is not None:
-            x = current_status.pos_x
-            y = current_status.pos_y
-            vehicle_dot.set_data([x], [y])
-            fig.canvas.draw()
-            fig.canvas.flush_events()
-        time.sleep(0.1)
-
+        time.sleep(1)
