@@ -1,5 +1,5 @@
 # 자동차 이미지
-![alt text](./guide/src/vehicle_size_iamge.png)
+![alt text](../guide/src/vehicle_size_iamge.png)
 
 
 # 자동차 크기 관련상수
